@@ -20,7 +20,7 @@ def truncated_svd(A, k):
     """
     u, s, v = np.linalg.svd(A)
     k_prime = min(k, len(s))
-    return u[:, :k_prime], s[:k_prime], v[:k_prime].conj().T
+    return np.asmatrix(u[:, :k_prime]), s[:k_prime], np.asmatrix(v[:k_prime]).H
 
 
 def random_lowrank(rows, cols, rank, rgen, dtype):
@@ -40,10 +40,10 @@ def random_lowrank(rows, cols, rank, rgen, dtype):
 def normalize_svec(U):
     """Normalizes the singular vectors U to normal form, such that the first
     component of each singular vector has argument 0."""
-    if np.isreal(U.dtype):
-        return U / np.sign(U[0])[None, :]
+    if np.isrealobj(U):
+        return U / np.sign(U[0])
     else:
-        phases = np.exp(1.j * np.argument(U[0]))
-        return U / phases[None, :]
+        phases = np.exp(1.j * np.angle(U[0]))
+        return U / phases
 
 
