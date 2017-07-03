@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.sparse.linalg as la
+from scipy.sparse import random
 
 
 def svds(*args, **kwargs):
@@ -62,6 +63,23 @@ def random_lowrankh(rows, rank, rgen=np.random, dtype=np.float_, psd=False):
 def random_fullrankh(rows, **kwargs):
     kwargs.pop('rank')
     return random_lowrankh(rows, rows, **kwargs)
+
+
+def random_sparse(rows, cols, rank, rgen=np.random, dtype=np.float_,
+                  format='csr'):
+    if dtype == np.float_:
+        return random(rows, cols, rank / min(rows, cols), format=format,
+                    dtype=dtype, data_rvs=rgen.randn)
+    elif dtype == np.complex_:
+        return random_sparse(rows, cols, rank, rgen=rgen) + \
+            1.j * random_sparse(rows, cols, rank, rgen=rgen)
+    else:
+        raise ValueError("{} is not a valid dtype".format(dtype))
+
+
+def random_sparseh(rows, rank, rgen=np.random, dtype=np.float_, format='csr'):
+    A = random_sparse(rows, rows, rank, rgen=rgen, dtype=dtype, format=format)
+    return A + A.H
 
 
 def normalize_svec(U):

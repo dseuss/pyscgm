@@ -36,7 +36,8 @@ def test_approximate_range_finder(rows, cols, rank, dtype, piter_normalizer, rge
 @pt.mark.parametrize('dtype', pt.DTYPES)
 @pt.mark.parametrize('transpose', [False, True, 'auto'])
 @pt.mark.parametrize('n_iter, target_gen', [(7, u.random_lowrank),
-                                            (20, u.random_fullrank)])
+                                            (20, u.random_fullrank),
+                                            (20, u.random_sparse)])
 def test_randomized_svd(rows, cols, rank, dtype, transpose, n_iter, target_gen,
                         rgen):
     # -2 due to the limiations of scipy.sparse.linalg.svds
@@ -45,11 +46,11 @@ def test_randomized_svd(rows, cols, rank, dtype, transpose, n_iter, target_gen,
 
     U_ref, s_ref, V_ref = u.svds(A, k=rank, which='LM')
     U, s, V = m.svds(A, rank, transpose=transpose, rgen=rgen, n_iter=n_iter)
-    # since singular vectors are only determined up to a phase
-    U, U_ref, Vt, V_reft = map(u.normalize_svec, (U, U_ref, V.T, V_ref.T))
 
-    assert_allclose(np.linalg.norm(U - U_ref, axis=0), 0, atol=1e-3)
-    assert_allclose(np.linalg.norm(Vt.T - V_reft.T, axis=0), 0, atol=1e-3)
+    error_U = np.abs(U.conj().T.dot(U_ref)) - np.eye(rank)
+    assert_allclose(np.linalg.norm(error_U), 0, atol=1e-3)
+    error_V = np.abs(V.dot(V_ref.conj().T)) - np.eye(rank)
+    assert_allclose(np.linalg.norm(error_V), 0, atol=1e-3)
     assert_allclose(s.ravel() - s_ref, 0, atol=1e-3)
     # Check that singular values are returned in ascending order
     assert_array_equal(s, np.sort(s))
@@ -58,7 +59,8 @@ def test_randomized_svd(rows, cols, rank, dtype, transpose, n_iter, target_gen,
 EIGSH_GENERATORS = [(7, partial(u.random_lowrankh, psd=True)),
                     (7, partial(u.random_lowrankh, psd=False)),
                     (20, partial(u.random_fullrankh, psd=True)),
-                    (20, partial(u.random_fullrankh, psd=False))]
+                    (20, partial(u.random_fullrankh, psd=False)),
+                    (20, u.random_sparseh)]
 
 
 @pt.mark.parametrize('rows, _', pt.TESTARGS_MATRIXDIMS)
@@ -72,9 +74,8 @@ def test_randomized_eigsh_direct(rows, _, rank, dtype, n_iter, target_gen, rgen)
     vals_ref, vecs_ref = u.eigsh(A, k=rank, which='LM')
     vals, vecs = m.eigsh(A, rank, method='direct', n_iter=n_iter, rgen=rgen)
 
-    vecs_ref, vecs = map(u.normalize_svec, (vecs_ref, vecs))
-
-    assert_allclose(np.linalg.norm(vecs - vecs_ref, axis=0), 0, atol=1e-3)
+    error_vecs = np.abs(vecs.conj().T.dot(vecs_ref)) - np.eye(rank)
+    assert_allclose(np.linalg.norm(error_vecs), 0, atol=1e-3)
     assert_allclose(vals.ravel() - vals_ref, 0, atol=1e-3)
     # Check that eigenvalues are returned in ascening order
     assert_array_equal(vals, np.sort(vals))
