@@ -2,7 +2,7 @@ import numpy as np
 from scipy import linalg
 
 
-def approx_range_finder(A, size, n_iter, piter_normalizer='auto',
+def approx_range_finder(A, sketch_size, n_iter, piter_normalizer='auto',
                         rgen=np.random):
     """Computes an orthonormal matrix whose range approximates the range of A.
 
@@ -11,7 +11,7 @@ def approx_range_finder(A, size, n_iter, piter_normalizer='auto',
     A: numpy matrix
         The input data matrix
 
-    size: integer
+    sketch_size: integer
         Size of the return array
 
     n_iter: integer
@@ -31,7 +31,7 @@ def approx_range_finder(A, size, n_iter, piter_normalizer='auto',
     Returns
     -------
     Q: numpy matrix
-        A (A.shape[0] x size) projection matrix, the range of which
+        A (A.shape[0] x sketch_size) projection matrix, the range of which
         approximates well the range of the input matrix A.
 
     Notes
@@ -51,9 +51,9 @@ def approx_range_finder(A, size, n_iter, piter_normalizer='auto',
     """
     A = np.asmatrix(A)
 
-    # Generating normal random vectors with shape: (A.shape[1], size)
+    # Generating normal random vectors with shape: (A.shape[1], sketch_size)
     # note that real normal vectors are sufficient, no complex values necessary
-    Q = rgen.randn(A.shape[1], size)
+    Q = rgen.randn(A.shape[1], sketch_size)
 
     # Deal with "auto" mode
     if piter_normalizer == 'auto':
@@ -176,3 +176,75 @@ def randomized_svd(M, n_components, n_oversamples=10, n_iter='auto',
     else:
         return (np.asmatrix(U[:, :n_components]), s[:n_components],
                 np.asmatrix(V[:n_components, :]).H)
+
+
+def _eigh_nystrom(M, n_components, **kwargs):
+    raise NotImplementedError("_eigh_nystrom not implemented")
+
+
+def _eigh_direct(M, n_components, **kwargs):
+    Q = approx_range_finder(M, **kwargs)
+    B = Q.H * M * Q
+    vals, vecs = linalg.eigh(B)
+    # get the k largest elements by magintude, but keep the original order,
+    # which respects the sign
+    sel = np.sort(np.argsort(np.abs(vals))[-n_components:])
+    del B
+    return vals[sel], Q * vecs[:, sel]
+
+
+EIGH_FUNCTIONS = {'direct': _eigh_direct, 'nystrom': _eigh_nystrom}
+
+
+def randomized_eigh(M, n_components, n_oversamples=10, method='direct',
+                    n_iter='auto', piter_normalizer='auto', rgen=np.random):
+    """Computes the truncated eigenvalue decomposition of a Hermitian matrix.
+    Returns them in ascending order.
+
+    Parameters
+    ----------
+    M: Hermitian numpy matrix or sparse matrix
+        Matrix to decompose
+
+    n_components: int
+        Number of singular values and vectors to extract.
+
+    n_oversamples: int (default is 10)
+        see :func:`randomized_svd`
+
+    method: 'direct' or 'nystrom'
+        Which algorithm should be used. 'direct' is described in Alg. 5.3 in
+        Halko, et. al. and works for general hermitian matrices, whereas
+        'nystrom' is described in Alg. 5.5 and only works for positive semi-
+        definite matrices. On the other hand, the latter is usually more
+        precise with only a small overhead.
+
+    n_iter: int or 'auto' (default is 'auto')
+        see :func:`randomized_svd`
+
+    piter_normalizer: 'auto' (default), 'QR', 'LU', 'none'
+        see :func:`randomized_svd`
+
+    random_state: RandomState
+        A random number generator instance to make behavior
+
+    References
+    ----------
+    * Finding structure with randomness: Stochastic algorithms for constructing
+      approximate matrix decompositions
+      Halko, et al., 2009 http://arxiv.org/abs/arXiv:0909.4061
+
+    """
+    M = np.asmatrix(M)
+    sketch_size = n_components + n_oversamples
+
+    if n_iter == 'auto':
+        # Checks if the number of iterations is explicitely specified
+        # Adjust n_iter. 7 was found a good compromise for PCA.
+        n_iter = 7 if n_components < .1 * min(M.shape) else 4
+
+    eigh = EIGH_FUNCTIONS[method]
+    vals, vecs = eigh(M, n_components, sketch_size=sketch_size, n_iter=n_iter,
+                      rgen=rgen, piter_normalizer=piter_normalizer)
+
+    return vals, np.asmatrix(vecs)

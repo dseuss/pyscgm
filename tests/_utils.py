@@ -31,7 +31,9 @@ def truncated_eigh(A, k):
 
     """
     vals, vecs = np.linalg.eigh(A)
-    sel = np.argsort(np.abs(vals))[-k:][::-1]
+    # get the k largest elements by magintude, but keep the original order,
+    # which respects the sign
+    sel = np.sort(np.argsort(np.abs(vals))[-k:])
     return vals[sel], np.asmatrix(vecs[:, sel])
 
 
