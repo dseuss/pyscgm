@@ -11,7 +11,10 @@ import pyscgm.extmath as m
 @pt.mark.parametrize('dtype', pt.DTYPES)
 @pt.mark.parametrize('piter_normalizer', pt.PITER_NORMALIZERS)
 def test_approximate_range_finder(rows, cols, rank, dtype, piter_normalizer, rgen):
-    # Enlarge test matrices due to oversampling
+    # only guaranteed to work for low-rank matrices
+    if rank is 'fullrank':
+        return
+
     rf_size = rank + 10
     assert min(rows, cols) > rf_size
 
@@ -30,8 +33,8 @@ def test_approximate_range_finder(rows, cols, rank, dtype, piter_normalizer, rge
 @pt.mark.parametrize('dtype', pt.DTYPES)
 @pt.mark.parametrize('transpose', [False, True, 'auto'])
 def test_randomized_svd(rows, cols, rank, dtype, transpose, rgen):
-    # Enlarge test matrices due to oversampling
-    A = random_lowrank(rows, cols, min(rows, cols), rgen, dtype)
+    rank = min(rows, cols) if rank is 'fullrank' else rank
+    A = random_lowrank(rows, cols, rank, rgen, dtype)
     U_ref, s_ref, V_ref = truncated_svd(A, rank)
     U, s, V = m.randomized_svd(A, rank, transpose=transpose, rgen=rgen,
                                n_iter=10)
