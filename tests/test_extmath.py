@@ -23,6 +23,7 @@ def test_approximate_range_finder(rows, cols, rank, dtype, piter_normalizer, rge
     Q = m.approx_range_finder(A, rf_size, 7, rgen=rgen,
                               piter_normalizer=piter_normalizer)
 
+    Q = np.asmatrix(Q)
     assert Q.shape == (rows, rf_size)
     normdist = np.linalg.norm(A - Q * (Q.H * A), ord='fro')
     assert normdist < 1e-7

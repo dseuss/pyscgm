@@ -17,7 +17,7 @@ def truncated_svd(A, k):
     """
     u, s, v = np.linalg.svd(A)
     k_prime = min(k, len(s))
-    return np.asmatrix(u[:, :k_prime]), s[:k_prime], np.asmatrix(v[:k_prime]).H
+    return u[:, :k_prime], s[:k_prime], v[:k_prime].conj().T
 
 
 def truncated_eigh(A, k):
@@ -34,37 +34,37 @@ def truncated_eigh(A, k):
     # get the k largest elements by magintude, but keep the original order,
     # which respects the sign
     sel = np.sort(np.argsort(np.abs(vals))[-k:])
-    return vals[sel], np.asmatrix(vecs[:, sel])
+    return vals[sel], vecs[:, sel]
 
 
 def random_lowrank(rows, cols, rank, rgen, dtype):
     """Returns a random lowrank matrix of given shape and dtype"""
     if dtype == np.float_:
-        A = np.asmatrix(rgen.randn(rows, rank))
-        B = np.asmatrix(rgen.randn(cols, rank))
+        A = rgen.randn(rows, rank)
+        B = rgen.randn(cols, rank)
     elif dtype == np.complex_:
-        A = np.asmatrix(rgen.randn(rows, rank) + 1.j * rgen.randn(rows, rank))
-        B = np.asmatrix(rgen.randn(cols, rank) + 1.j * rgen.randn(cols, rank))
+        A = rgen.randn(rows, rank) + 1.j * rgen.randn(rows, rank)
+        B = rgen.randn(cols, rank) + 1.j * rgen.randn(cols, rank)
     else:
         raise ValueError("{} is not a valid dtype".format(dtype))
 
-    return A * B.H
+    return A.dot(B.conj().T)
 
 
 def random_lowrankh(rows, rank, rgen=np.random, dtype=np.float_, psd=False):
     """Returns a random hermitian lowrank matrix of given shape and dtype"""
     if dtype == np.float_:
-        A = np.asmatrix(rgen.randn(rows, rank))
+        A = rgen.randn(rows, rank)
     elif dtype == np.complex_:
-        A = np.asmatrix(rgen.randn(rows, rank) + 1.j * rgen.randn(rows, rank))
+        A = rgen.randn(rows, rank) + 1.j * rgen.randn(rows, rank)
     else:
         raise ValueError("{} is not a valid dtype".format(dtype))
 
     if psd:
-        return A * A.H
+        return A.dot(A.conj().T)
     else:
-        signs = np.diag(rgen.choice([-1, 1], size=rank))
-        return A * signs * A.H
+        signs = rgen.choice([-1, 1], size=rank)
+        return (A * signs).dot(A.conj().T)
 
 
 def normalize_svec(U):

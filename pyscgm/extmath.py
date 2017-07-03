@@ -1,5 +1,6 @@
 import numpy as np
 from scipy import linalg
+from scipy.sparse.linalg import aslinearoperator
 
 
 def approx_range_finder(A, sketch_size, n_iter, piter_normalizer='auto',
@@ -49,7 +50,7 @@ def approx_range_finder(A, sketch_size, n_iter, piter_normalizer='auto',
     Original implementation from scikit-learn.
 
     """
-    A = np.asmatrix(A)
+    A = aslinearoperator(A)
 
     # Generating normal random vectors with shape: (A.shape[1], sketch_size)
     # note that real normal vectors are sufficient, no complex values necessary
@@ -78,7 +79,7 @@ def approx_range_finder(A, sketch_size, n_iter, piter_normalizer='auto',
     # Sample the range of A using by linear projection of Q
     # Extract an orthonormal basis
     Q, _ = linalg.qr(A * Q, mode='economic')
-    return np.asmatrix(Q)
+    return Q
 
 
 def randomized_svd(M, n_components, n_oversamples=10, n_iter='auto',
@@ -147,7 +148,7 @@ def randomized_svd(M, n_components, n_oversamples=10, n_iter='auto',
       analysis
       A. Szlam et al. 2014
     """
-    M = np.asmatrix(M)
+    M = aslinearoperator(M)
     sketch_size = n_components + n_oversamples
 
     if n_iter == 'auto':
@@ -158,11 +159,12 @@ def randomized_svd(M, n_components, n_oversamples=10, n_iter='auto',
     if transpose == 'auto':
         transpose = M.shape[0] < M.shape[1]
     if transpose:
-        M = M.T
+        M = M.H
 
     Q = approx_range_finder(M, sketch_size, n_iter, piter_normalizer, rgen)
     # project M to the (k + p) dimensional space using the basis vectors
-    B = Q.H * M
+    # B = Q.H * M
+    B = (M.H * Q).conj().T
 
     # compute the SVD on the thin matrix: (k + p) wide
     Uhat, s, V = linalg.svd(B, full_matrices=False)
@@ -171,11 +173,11 @@ def randomized_svd(M, n_components, n_oversamples=10, n_iter='auto',
 
     if transpose:
         # transpose back the results according to the input convention
-        return (np.asmatrix(V[:n_components, :]).T, s[:n_components],
-                np.asmatrix(U[:, :n_components]).conj())
+        return (np.asmatrix(V[:n_components, :]).conj().T, s[:n_components],
+                np.asmatrix(U[:, :n_components]))
     else:
         return (np.asmatrix(U[:, :n_components]), s[:n_components],
-                np.asmatrix(V[:n_components, :]).H)
+                np.asmatrix(V[:n_components, :]).conj().T)
 
 
 def _eigh_nystrom(M, n_components, **kwargs):
@@ -184,7 +186,7 @@ def _eigh_nystrom(M, n_components, **kwargs):
 
     # 1. Form the following matrices
     B1 = M * Q
-    B2 = Q.H * B1
+    B2 = Q.conj().T(B1)
 
     # 2. Perform Cholesky factorization B2 = C.H * C
     C = linalg.cholesky(B2, lower=False)
@@ -201,7 +203,7 @@ def _eigh_nystrom(M, n_components, **kwargs):
 def _eigh_direct(M, n_components, **kwargs):
     Q = approx_range_finder(M, **kwargs)
     # 1. Form the small matrix B
-    B = Q.H * M * Q
+    B = Q.conj().T.dot(M * Q)
 
     # 2. Compute an eigenvalue decompostion B = V * Lamba * V.H
     vals, vecs = linalg.eigh(B)
@@ -210,7 +212,7 @@ def _eigh_direct(M, n_components, **kwargs):
     del B
 
     # 3. Form the orthogonal matrix U + Q * V
-    return vals, Q * vecs
+    return vals, Q.dot(vecs)
 
 
 EIGH_FUNCTIONS = {'direct': _eigh_direct, 'nystrom': _eigh_nystrom}
@@ -255,7 +257,7 @@ def randomized_eigh(M, n_components, n_oversamples=10, method='direct',
       Halko, et al., 2009 http://arxiv.org/abs/arXiv:0909.4061
 
     """
-    M = np.asmatrix(M)
+    M = aslinearoperator(M)
     sketch_size = n_components + n_oversamples
 
     if n_iter == 'auto':
