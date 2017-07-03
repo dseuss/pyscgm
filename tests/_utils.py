@@ -1,40 +1,23 @@
 import numpy as np
+import scipy.sparse.linalg as la
 
 
-def truncated_svd(A, k):
-    """Compute the truncated SVD of the matrix `A` i.e. the `k` largest
-    singular values as well as the corresponding singular vectors. It might
-    return less singular values/vectors, if one dimension of `A` is smaller
-    than `k`.
-
-    :param A: A real or complex matrix
-    :param k: Number of singular values/vectors to compute
-    :returns: u, s, v, where
-        u: left-singular vectors
-        s: singular values
-        v: right-singular vectors
-
+def svds(*args, **kwargs):
+    """Thin wrapper around `scipy.sparse.linalg.svds` guaranteeting ascending
+    order of singular values
     """
-    u, s, v = np.linalg.svd(A)
-    k_prime = min(k, len(s))
-    return u[:, :k_prime], s[:k_prime], v[:k_prime].conj().T
+    u, s, v = la.svds(*args, **kwargs)
+    i = np.argsort(s)
+    return u[:, i], s[i], v[i, :]
 
 
-def truncated_eigh(A, k):
-    """Compute the truncated eigenvalue decomposition  of the Hermitian matrix
-    `A` i.e. the `k` eigenvalues, which have the largest magnitude, as well
-    the corresponding eigenvectors.
-
-    :param A: A real or complex Hermitian matrix
-    :param k: Number of eigenvalues/vectors to compute
-    :returns: vals, vecs
-
+def eigsh(*args, **kwargs):
+    """Thin wrapper around `scipy.sparse.linalg.eigsh` guaranteeting ascending
+    order of eigenvalues
     """
-    vals, vecs = np.linalg.eigh(A)
-    # get the k largest elements by magintude, but keep the original order,
-    # which respects the sign
-    sel = np.sort(np.argsort(np.abs(vals))[-k:])
-    return vals[sel], vecs[:, sel]
+    vals, vecs = la.eigsh(*args, **kwargs)
+    i = np.argsort(vals)
+    return vals[i], vecs[:, i]
 
 
 def random_lowrank(rows, cols, rank, rgen, dtype):

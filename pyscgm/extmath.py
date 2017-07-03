@@ -82,10 +82,11 @@ def approx_range_finder(A, sketch_size, n_iter, piter_normalizer='auto',
     return Q
 
 
-def randomized_svd(M, n_components, n_oversamples=10, n_iter='auto',
-                   piter_normalizer='auto', transpose='auto',
-                   rgen=np.random):
-    """Computes a truncated randomized SVD
+def svds(M, n_components, n_oversamples=10, n_iter='auto',
+         piter_normalizer='auto', transpose='auto', rgen=np.random):
+    """Computes a truncated randomized SVD. Uses the same convention as
+    `scipy.sparse.linalg.svds`. However, we guarantee to return the singular
+    values in ascending order
 
     Parameters
     ----------
@@ -170,14 +171,13 @@ def randomized_svd(M, n_components, n_oversamples=10, n_iter='auto',
     Uhat, s, V = linalg.svd(B, full_matrices=False)
     del B
     U = np.dot(Q, Uhat)
+    sel = slice(n_components - 1, None, -1)
 
     if transpose:
         # transpose back the results according to the input convention
-        return (np.asmatrix(V[:n_components, :]).conj().T, s[:n_components],
-                np.asmatrix(U[:, :n_components]))
+        return (V[sel].conj().T, s[sel], U[:, sel].conj().T)
     else:
-        return (np.asmatrix(U[:, :n_components]), s[:n_components],
-                np.asmatrix(V[:n_components, :]).conj().T)
+        return U[:, sel], s[sel], V[sel, :]
 
 
 def _eigh_nystrom(M, n_components, **kwargs):
@@ -218,10 +218,11 @@ def _eigh_direct(M, n_components, **kwargs):
 EIGH_FUNCTIONS = {'direct': _eigh_direct, 'nystrom': _eigh_nystrom}
 
 
-def randomized_eigh(M, n_components, n_oversamples=10, method='direct',
-                    n_iter='auto', piter_normalizer='auto', rgen=np.random):
+def eigsh(M, n_components, n_oversamples=10, method='direct', n_iter='auto',
+          piter_normalizer='auto', rgen=np.random):
     """Computes the truncated eigenvalue decomposition of a Hermitian matrix.
-    Returns them in ascending order.
+    Uses the same conventions as `scipy.sparse.linalg.eigsh`, but guarantees
+    to return the eigenvalues in ascending order.
 
     Parameters
     ----------

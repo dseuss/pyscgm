@@ -1,9 +1,10 @@
 import numpy as np
+import pyscgm.extmath as m
 import pytest as pt
+import scipy.sparse.linalg as la
 from numpy.testing import assert_allclose, assert_array_equal
 
 from . import _utils as u
-import pyscgm.extmath as m
 
 
 @pt.mark.parametrize('rows, cols', pt.TESTARGS_MATRIXDIMS)
@@ -34,35 +35,32 @@ def test_approximate_range_finder(rows, cols, rank, dtype, piter_normalizer, rge
 @pt.mark.parametrize('dtype', pt.DTYPES)
 @pt.mark.parametrize('transpose', [False, True, 'auto'])
 def test_randomized_svd(rows, cols, rank, dtype, transpose, rgen):
-    rank = min(rows, cols) if rank is 'fullrank' else rank
-    A = u.random_lowrank(rows, cols, rank, rgen, dtype)
-    U_ref, s_ref, V_ref = u.truncated_svd(A, rank)
-    U, s, V = m.randomized_svd(A, rank, transpose=transpose, rgen=rgen)
+    # -2 due to the limiations of scipy.sparse.linalg.svds
+    rank = min(rows, cols) - 2 if rank is 'fullrank' else rank
+    A = u.random_lowrank(rows, cols, rank=rank, rgen=rgen, dtype=dtype)
+
+    U_ref, s_ref, V_ref = u.svds(A, k=rank, which='LM')
+    U, s, V = m.svds(A, rank, transpose=transpose, rgen=rgen)
     # since singular vectors are only determined up to a phase
-    U, U_ref, V, V_ref = map(u.normalize_svec, (U, U_ref, V, V_ref))
+    U, U_ref, Vt, V_reft = map(u.normalize_svec, (U, U_ref, V.T, V_ref.T))
 
     assert_allclose(np.linalg.norm(U - U_ref, axis=0), 0, atol=1e-3)
-    assert_allclose(np.linalg.norm(V - V_ref, axis=0), 0, atol=1e-3)
+    assert_allclose(np.linalg.norm(Vt.T - V_reft.T, axis=0), 0, atol=1e-3)
     assert_allclose(s.ravel() - s_ref, 0, atol=1e-3)
-    # Check that singular values are returned in descending order
-    assert_array_equal(s, np.sort(s)[::-1])
-
+    # Check that singular values are returned in ascending order
+    assert_array_equal(s, np.sort(s))
 
 
 @pt.mark.parametrize('rows, _', pt.TESTARGS_MATRIXDIMS)
 @pt.mark.parametrize('rank', pt.TESTARGS_RANKS)
 @pt.mark.parametrize('dtype', pt.DTYPES)
 @pt.mark.parametrize('psd', [True, False])
-@pt.mark.parametrize('method', ['direct'])
-def test_randomized_eigh(rows, _, rank, dtype, psd, method, rgen):
-    # Nystrom is only expected to work for psd matrices
-    #  if method is 'nystrom' and (not psd or rank is not 'fullrank'):
-    #      return
-
-    rank = rows if rank is 'fullrank' else rank
+def test_randomized_eigsh_direct(rows, _, rank, dtype, psd, rgen):
+    # -2 due to the limiations of scipy.sparse.linalg.eigsh
+    rank = rows - 2 if rank is 'fullrank' else rank
     A = u.random_lowrankh(rows, rank, rgen, dtype, psd=psd)
-    vals_ref, vecs_ref = u.truncated_eigh(A, rank)
-    vals, vecs = m.randomized_eigh(A, rank, method=method, rgen=rgen)
+    vals_ref, vecs_ref = u.eigsh(A, k=rank, which='LM')
+    vals, vecs = m.eigsh(A, rank, method='direct', rgen=rgen)
 
     vecs_ref, vecs = map(u.normalize_svec, (vecs_ref, vecs))
 
