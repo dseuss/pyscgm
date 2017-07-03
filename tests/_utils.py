@@ -20,7 +20,7 @@ def eigsh(*args, **kwargs):
     return vals[i], vecs[:, i]
 
 
-def random_lowrank(rows, cols, rank, rgen, dtype):
+def random_lowrank(rows, cols, rank, rgen=np.random, dtype=np.float_):
     """Returns a random lowrank matrix of given shape and dtype"""
     if dtype == np.float_:
         A = rgen.randn(rows, rank)
@@ -31,7 +31,15 @@ def random_lowrank(rows, cols, rank, rgen, dtype):
     else:
         raise ValueError("{} is not a valid dtype".format(dtype))
 
-    return A.dot(B.conj().T)
+    C = A.dot(B.conj().T)
+    return C / np.linalg.norm(C)
+
+
+def random_fullrank(rows, cols, **kwargs):
+    """Returns a random matrix of given shape and dtype. Should provide
+    same interface as random_lowrank"""
+    kwargs.pop('rank')
+    return random_lowrank(rows, cols, min(rows, cols), **kwargs)
 
 
 def random_lowrankh(rows, rank, rgen=np.random, dtype=np.float_, psd=False):
@@ -44,10 +52,16 @@ def random_lowrankh(rows, rank, rgen=np.random, dtype=np.float_, psd=False):
         raise ValueError("{} is not a valid dtype".format(dtype))
 
     if psd:
-        return A.dot(A.conj().T)
+        C = A.dot(A.conj().T)
     else:
         signs = rgen.choice([-1, 1], size=rank)
-        return (A * signs).dot(A.conj().T)
+        C = (A * signs).dot(A.conj().T)
+    return C / np.linalg.norm(C)
+
+
+def random_fullrankh(rows, **kwargs):
+    kwargs.pop('rank')
+    return random_lowrankh(rows, rows, **kwargs)
 
 
 def normalize_svec(U):
