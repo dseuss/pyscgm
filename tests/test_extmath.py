@@ -55,8 +55,8 @@ def test_randomized_svd(rows, cols, rank, dtype, transpose, rgen):
 @pt.mark.parametrize('method', ['direct'])
 def test_randomized_eigh(rows, _, rank, dtype, psd, method, rgen):
     # Nystrom is only expected to work for psd matrices
-    if method is 'nystrom' and not psd:
-        return
+    #  if method is 'nystrom' and (not psd or rank is not 'fullrank'):
+    #      return
 
     rank = rows if rank is 'fullrank' else rank
     A = u.random_lowrankh(rows, rank, rgen, dtype, psd=psd)

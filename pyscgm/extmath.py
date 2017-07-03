@@ -179,18 +179,38 @@ def randomized_svd(M, n_components, n_oversamples=10, n_iter='auto',
 
 
 def _eigh_nystrom(M, n_components, **kwargs):
-    raise NotImplementedError("_eigh_nystrom not implemented")
+    raise NotImplementedError("Nystrom method not implemented")
+    Q = approx_range_finder(M, **kwargs)
+
+    # 1. Form the following matrices
+    B1 = M * Q
+    B2 = Q.H * B1
+
+    # 2. Perform Cholesky factorization B2 = C.H * C
+    C = linalg.cholesky(B2, lower=False)
+
+    # 3. Form F = B1 * C^{-1} using a triangular solve <--> F * C = B1
+    F = linalg.solve_triangular(B1.T, C.T).T
+
+    # 4. Compute an SVD F = U * Sigma * V.H, set Lambda = Sigma^2
+    vecs, svals, _ = linalg.svd(F)
+    return svals * svals, vecs
+
 
 
 def _eigh_direct(M, n_components, **kwargs):
     Q = approx_range_finder(M, **kwargs)
+    # 1. Form the small matrix B
     B = Q.H * M * Q
+
+    # 2. Compute an eigenvalue decompostion B = V * Lamba * V.H
     vals, vecs = linalg.eigh(B)
     # get the k largest elements by magintude, but keep the original order,
     # which respects the sign
-    sel = np.sort(np.argsort(np.abs(vals))[-n_components:])
     del B
-    return vals[sel], Q * vecs[:, sel]
+
+    # 3. Form the orthogonal matrix U + Q * V
+    return vals, Q * vecs
 
 
 EIGH_FUNCTIONS = {'direct': _eigh_direct, 'nystrom': _eigh_nystrom}
@@ -247,4 +267,5 @@ def randomized_eigh(M, n_components, n_oversamples=10, method='direct',
     vals, vecs = eigh(M, n_components, sketch_size=sketch_size, n_iter=n_iter,
                       rgen=rgen, piter_normalizer=piter_normalizer)
 
-    return vals, np.asmatrix(vecs)
+    sel = np.sort(np.argsort(np.abs(vals))[-n_components:])
+    return vals[sel], np.asmatrix(vecs[:, sel])
