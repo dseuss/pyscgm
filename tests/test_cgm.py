@@ -1,7 +1,7 @@
 import numpy as np
 import pyscgm.cgm as m
 import pytest as pt
-from numpy.testing import assert_allclose, assert_array_equal
+from numpy.testing import assert_allclose
 
 from . import _utils as u
 
@@ -13,6 +13,7 @@ def generate_setting(dim, rank, rgen):
     return X, A, y
 
 
+@pt.mark.skip
 @pt.mark.parametrize('estimator', [m.scgm_estimator])
 def test_scgm_estimator(estimator, rgen):
     X, A, y = generate_setting(30, 3, rgen)
