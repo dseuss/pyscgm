@@ -1,10 +1,11 @@
-import numpy as np
-from scipy.sparse.linalg import LinearOperator, aslinearoperator
+import itertools as it
+from collections import namedtuple
 from copy import copy
 
-from . import extmath as em
+import numpy as np
+from scipy.sparse.linalg import LinearOperator, aslinearoperator
 
-from collections import namedtuple
+from . import extmath as em
 
 
 class LRSketch(LinearOperator):
@@ -24,6 +25,7 @@ class LRSketch(LinearOperator):
         testmatrices = self.make_testmatrices(shape, rank, rgen=rgen, dtype=dtype) \
             if testmatrices is None else testmatrices
         self.Omega, self.Psi = testmatrices
+        assert (self.Omega.dtype == dtype) and (self.Psi.dtype == dtype)
 
         self.Y = np.zeros((shape[0], self.Omega.shape[1]), dtype=dtype)
         self.W = np.zeros((self.Psi.shape[0], shape[1]), dtype=dtype)
@@ -40,14 +42,31 @@ class LRSketch(LinearOperator):
         return cls.TestMatrices(Omega=Omega, Psi=Psi)
 
     @classmethod
-    def from_full(cls, A, rank, rgen=np.random):
+    def from_full(cls, A, rank, **kwargs):
         """@todo: Docstring for from_full.
 
         """
-        sketch = cls(A.shape, rank, rgen=rgen, dtype=A.dtype)
-        sketch.Y[:] = A.dot(sketch.Omega)
-        sketch.W[:] = sketch.Psi.dot(A)
+        sketch = cls(A.shape, rank, dtype=A.dtype, **kwargs)
+
+        if isinstance(A, np.ndarray):
+            sketch.Y[:] = A.dot(sketch.Omega)
+            sketch.W[:] = sketch.Psi.dot(A)
+        elif isinstance(A, LinearOperator):
+            sketch.Y[:] = A * sketch.Omega
+            sketch.W[:] = (A.H * sketch.Psi.conj().T).conj().T
+        else:
+            raise ValueError('Cannot convert {} to LRSketch'.format(type(A)))
         return sketch
+
+    @classmethod
+    def from_fulls(cls, iterator, rank, **kwargs):
+        iterator = iter(iterator)
+        first = cls.from_full(next(iterator), rank, **kwargs)
+
+        testmatrices = cls.TestMatrices(Omega=first.Omega, Psi=first.Psi)
+        kwargs = {**kwargs, 'testmatrices': testmatrices}
+        rest = (cls.from_full(base, rank, **kwargs) for base in iterator)
+        return it.chain((first,), rest)
 
     @property
     def factorization(self):
@@ -85,5 +104,4 @@ class LRSketch(LinearOperator):
         assert np.isscalar(c)
         self.W *= c
         return self
-
 

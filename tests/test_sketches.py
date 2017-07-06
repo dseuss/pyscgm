@@ -32,6 +32,21 @@ def test_sketch_lowrank(rows, cols, rank, dtype, target_gen, rgen):
 @pt.mark.parametrize('rows, cols', pt.TESTARGS_MATRIXDIMS)
 @pt.mark.parametrize('rank', pt.TESTARGS_RANKS)
 @pt.mark.parametrize('dtype', pt.DTYPES)
+def test_sketch_lowrank_from_fulls(rows, cols, rank, dtype, rgen):
+    rank = min(rows, cols) if rank is 'fullrank' else rank
+    A = u.random_lowrank(rows, cols, rank=rank, rgen=rgen, dtype=dtype)
+    B = u.random_lowrank(rows, cols, rank=rank, rgen=rgen, dtype=dtype)
+
+    A_sketch, B_sketch = LRSketch.from_fulls((A, B), rank)
+    assert (np.linalg.norm(A - A_sketch.to_full())  <= 1e-5)
+    assert (np.linalg.norm(B - B_sketch.to_full())  <= 1e-5)
+    assert A_sketch.Omega is B_sketch.Omega
+    assert A_sketch.Psi is B_sketch.Psi
+
+
+@pt.mark.parametrize('rows, cols', pt.TESTARGS_MATRIXDIMS)
+@pt.mark.parametrize('rank', pt.TESTARGS_RANKS)
+@pt.mark.parametrize('dtype', pt.DTYPES)
 def test_sketch_lowrank_matmul(rows, cols, rank, dtype, rgen):
     rank = min(rows, cols) if rank is 'fullrank' else rank
     A = u.random_lowrank(rows, cols, rank=rank, rgen=rgen, dtype=dtype)
