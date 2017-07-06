@@ -20,7 +20,7 @@ def test_sketch_lowrank(rows, cols, rank, dtype, target_gen, rgen):
     A_r = u.lowrank_approx(A, rank)
 
     # compute the sketch with given rank approximation
-    A_sketch = LRSketch.from_full(A, rank)
+    A_sketch = LRSketch.from_full(A, rank, rgen=rgen)
 
     # should be true in expectation with constant 3 -> 2 according to
     # Theorem 4.1 of [3] with the choice of Eq. (4.6)
@@ -37,7 +37,7 @@ def test_sketch_lowrank_from_fulls(rows, cols, rank, dtype, rgen):
     A = u.random_lowrank(rows, cols, rank=rank, rgen=rgen, dtype=dtype)
     B = u.random_lowrank(rows, cols, rank=rank, rgen=rgen, dtype=dtype)
 
-    A_sketch, B_sketch = LRSketch.from_fulls((A, B), rank)
+    A_sketch, B_sketch = LRSketch.from_fulls((A, B), rank, rgen=rgen)
     assert (np.linalg.norm(A - A_sketch.to_full())  <= 1e-5)
     assert (np.linalg.norm(B - B_sketch.to_full())  <= 1e-5)
     assert A_sketch.Omega is B_sketch.Omega
@@ -50,7 +50,7 @@ def test_sketch_lowrank_from_fulls(rows, cols, rank, dtype, rgen):
 def test_sketch_lowrank_matmul(rows, cols, rank, dtype, rgen):
     rank = min(rows, cols) if rank is 'fullrank' else rank
     A = u.random_lowrank(rows, cols, rank=rank, rgen=rgen, dtype=dtype)
-    A_sketch = LRSketch.from_full(A, rank)
+    A_sketch = LRSketch.from_full(A, rank, rgen=rgen)
 
     B = u.random_fullrank(cols, 1, rgen=rgen, dtype=dtype).ravel()
     assert_allclose(A_sketch * B, A.dot(B))
