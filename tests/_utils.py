@@ -39,7 +39,7 @@ def random_lowrank(rows, cols, rank, rgen=np.random, dtype=np.float_):
 def random_fullrank(rows, cols, **kwargs):
     """Returns a random matrix of given shape and dtype. Should provide
     same interface as random_lowrank"""
-    kwargs.pop('rank')
+    kwargs.pop('rank', None)
     return random_lowrank(rows, cols, min(rows, cols), **kwargs)
 
 
@@ -61,7 +61,7 @@ def random_lowrankh(rows, rank, rgen=np.random, dtype=np.float_, psd=False):
 
 
 def random_fullrankh(rows, **kwargs):
-    kwargs.pop('rank')
+    kwargs.pop('rank', None)
     return random_lowrankh(rows, rows, **kwargs)
 
 
@@ -92,3 +92,7 @@ def normalize_svec(U):
         return U / phases
 
 
+def lowrank_approx(A, rank):
+    # compute the best rank r approximation to A
+    U, sigma, V = svds(A, k=rank)
+    return (U * sigma).dot(V)

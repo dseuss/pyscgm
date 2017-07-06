@@ -1,9 +1,10 @@
 import numpy as np
+from scipy.sparse.linalg import LinearOperator, aslinearoperator
 
 from . import extmath as em
 
 
-class LRSketch(object):
+class LRSketch(LinearOperator):
     """Sketch of a low-rank hermitian matrix"""
 
     def __init__(self, shape, rank, rgen=np.random, dtype=np.float_):
@@ -40,6 +41,20 @@ class LRSketch(object):
         """
         Q, X = self.factorization
         return Q.dot(X)
+
+    def _matmat(self, A):
+        """Computes the matrix-matrix product product self * A
+
+        :param A: @todo
+        :returns: @todo
+
+        """
+        Q, X = self.factorization
+        return Q.dot(X.dot(A))
+
+
+
+
 
     @property
     def factorization(self):
