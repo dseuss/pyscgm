@@ -7,6 +7,7 @@ from . import extmath as em
 
 class LRSketch(LinearOperator):
     """Sketch of a low-rank hermitian matrix"""
+    __array_priority__ = 100
 
     def __init__(self, shape, rank, rgen=np.random, dtype=np.float_):
         """@todo: to be defined1.
@@ -59,11 +60,14 @@ class LRSketch(LinearOperator):
         Q, X = self.factorization
         return Q.dot(X.dot(A))
 
-    def __rmul__(self, c):
-        assert np.isscalar(c)
-        result = copy(self)
-        result.W = c * result.W
-        return result
+    def __rmul__(self, A):
+        if np.isscalar(A):
+            result = copy(self)
+            result.W = A * result.W
+            return result
+        else:
+            Q, X = self.factorization
+            return A.dot(Q).dot(X)
 
     def __imul__(self, c):
         assert np.isscalar(c)

@@ -35,16 +35,34 @@ def test_sketch_lowrank(rows, cols, rank, dtype, target_gen, rgen):
 def test_sketch_lowrank_matmul(rows, cols, rank, dtype, rgen):
     rank = min(rows, cols) if rank is 'fullrank' else rank
     A = u.random_lowrank(rows, cols, rank=rank, rgen=rgen, dtype=dtype)
-    B = u.random_fullrank(cols, 1, rgen=rgen, dtype=dtype).ravel()
     A_sketch = LRSketch.from_full(A, rank)
 
+    B = u.random_fullrank(cols, 1, rgen=rgen, dtype=dtype).ravel()
     assert_allclose(A_sketch * B, A.dot(B))
+
+    B = u.random_fullrank(rows, 1, rgen=rgen, dtype=dtype).ravel()
+    assert_allclose(B * A_sketch, B.dot(A))
 
 
 @pt.mark.parametrize('rows, cols', pt.TESTARGS_MATRIXDIMS)
 @pt.mark.parametrize('rank', pt.TESTARGS_RANKS)
 @pt.mark.parametrize('dtype', pt.DTYPES)
 def test_sketch_lowrank_scalarmul(rows, cols, rank, dtype, rgen):
+    rank = min(rows, cols) if rank is 'fullrank' else rank
+    A = u.random_lowrank(rows, cols, rank=rank, rgen=rgen, dtype=dtype)
+    c = standard_normal((1,), rgen=rgen, dtype=dtype)[0]
+    A_sketch = LRSketch.from_full(A, rank)
+
+    assert_allclose((c * A_sketch).to_full(), c * A, atol=1e-5)
+    assert (np.linalg.norm(A - A_sketch.to_full()) <= 1e-5)
+    A_sketch *= c
+    assert_allclose(A_sketch.to_full(), c * A, atol=1e-5)
+
+
+@pt.mark.parametrize('rows, cols', pt.TESTARGS_MATRIXDIMS)
+@pt.mark.parametrize('rank', pt.TESTARGS_RANKS)
+@pt.mark.parametrize('dtype', pt.DTYPES)
+def test_sketch_lowrank_add(rows, cols, rank, dtype, rgen):
     rank = min(rows, cols) if rank is 'fullrank' else rank
     A = u.random_lowrank(rows, cols, rank=rank, rgen=rgen, dtype=dtype)
     c = standard_normal((1,), rgen=rgen, dtype=dtype)[0]
