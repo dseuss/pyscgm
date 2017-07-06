@@ -9,7 +9,7 @@ from . import extmath as em
 
 
 class LRSketch(LinearOperator):
-    """Sketch of a low-rank hermitian matrix"""
+    """Sketch of a low-rank matrix"""
     __array_priority__ = 100
     TestMatrices = namedtuple('TestMatrices', ['Omega', 'Psi'])
 
