@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.sparse.linalg import LinearOperator, aslinearoperator
+from copy import copy
 
 from . import extmath as em
 
@@ -35,6 +36,12 @@ class LRSketch(LinearOperator):
         sketch.W[:] = sketch.Psi.dot(A)
         return sketch
 
+    @property
+    def factorization(self):
+        Q, _ = np.linalg.qr(self.Y)
+        X = em._llsq_solve_fast(self.Psi.dot(Q), self.W)
+        return Q, X
+
     def to_full(self):
         """@todo: Docstring for recons.
 
@@ -52,12 +59,14 @@ class LRSketch(LinearOperator):
         Q, X = self.factorization
         return Q.dot(X.dot(A))
 
+    def __rmul__(self, c):
+        assert np.isscalar(c)
+        result = copy(self)
+        result.W = c * result.W
+        return result
 
+    def __imul__(self, c):
+        assert np.isscalar(c)
+        self.W *= c
+        return self
 
-
-
-    @property
-    def factorization(self):
-        Q, _ = np.linalg.qr(self.Y)
-        X = em._llsq_solve_fast(self.Psi.dot(Q), self.W)
-        return Q, X
