@@ -1,3 +1,4 @@
+import numpy as np
 import pyscgm.extmath as em
 import pytest as pt
 from numpy.testing import assert_allclose
