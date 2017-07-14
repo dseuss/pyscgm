@@ -9,7 +9,7 @@ from .extmath import standard_normal
 class MeasurementMap(object):
     """Docstring for MeasurementMap. """
 
-    def __init__(self, nr_measurements, shape):
+    def __init__(self, nr_measurements, shape, dtype):
         """@todo: to be defined1.
 
         :param nr_measurements: @todo
@@ -18,6 +18,7 @@ class MeasurementMap(object):
         """
         self.nr_measurements = nr_measurements
         self.shape = shape
+        self.dtype = dtype
 
     @abstractmethod
     def __call__(self, u, v):
@@ -50,13 +51,14 @@ class Rank1MeasurmentMap(MeasurementMap):
 
     def __init__(self, nr_measurements, shape, rgen=np.random, dtype=np.float_):
         """@todo: to be defined1. """
-        super().__init__(nr_measurements, shape)
+        super().__init__(nr_measurements=nr_measurements,
+                         shape=shape, dtype=dtype)
         self.left_measurements = standard_normal((nr_measurements, shape[0]),
                                                  rgen=rgen, dtype=dtype)
         self.right_measurements = standard_normal((nr_measurements, shape[1]),
                                                   rgen=rgen, dtype=dtype)
 
-    def __call__(self, u, v):
+    def __call__(self, u, v=None):
         """@todo: Docstring for call.
 
         :param u: @todo
@@ -64,12 +66,18 @@ class Rank1MeasurmentMap(MeasurementMap):
         :returns: @todo
 
         """
-        assert u.shape == (self.shape[0], 1)
-        assert v.shape == (1, self.shape[1])
+        if v is None:
+            assert u.shape == self.shape
+            y = np.array([a.dot(u).dot(b) for a, b in zip(self.left_measurements,
+                                                          self.right_measurements)])
+            return y / np.sqrt(self.nr_measurements)
+        else:
+            assert u.shape == (self.shape[0], 1)
+            assert v.shape == (1, self.shape[1])
 
-        y_left = self.left_measurements.dot(u.ravel())
-        y_right = self.right_measurements.dot(v.ravel())
-        return y_left * y_right / np.sqrt(self.nr_measurements)
+            y_left = self.left_measurements.dot(u.ravel())
+            y_right = self.right_measurements.dot(v.ravel())
+            return y_left * y_right / np.sqrt(self.nr_measurements)
 
     def H(self, z):
         """@todo: Docstring for H.

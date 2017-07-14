@@ -22,6 +22,9 @@ def test_sketch_lowrank(rows, cols, dtype, test_rounds, rgen):
     outcomes_ref = map_dense.reshape((-1, rows * cols)).dot(A.ravel())
     assert_allclose(outcomes, outcomes_ref)
 
+    outcomes = measurement_map(A)
+    assert_allclose(outcomes, outcomes_ref)
+
     A_recons = measurement_map.H(outcomes)
     A_recons_ref = np.tensordot(outcomes, map_dense, axes=(0, 0))
     for _ in range(test_rounds):
