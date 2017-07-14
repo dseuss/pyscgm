@@ -104,4 +104,3 @@ class LRSketch(LinearOperator):
         assert np.isscalar(c)
         self.W *= c
         return self
-
